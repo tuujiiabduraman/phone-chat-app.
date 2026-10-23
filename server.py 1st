@@ -1,0 +1,42 @@
+import socket
+import threading
+import random
+import requests
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(('0.0.0.0', 9999))
+server.listen(5)
+
+koodii_mirkaneessaa = {}
+fayyadamtota = {}
+
+def handle_friends(client_socket, addr):
+    generated_code = str(random.randint(1000, 9999))
+    koodii_mirkaneessaa[addr] = generated_code
+    print(f"\n[ALERT]: Hiriyaan haaraan dhufeera. Koodiin isaa: {generated_code}")
+    
+    while True:
+        try:
+            data = client_socket.recv(4096).decode('utf-8')
+            if not data:
+                break
+            
+            if data.startswith("VERIFY:"):
+                _, user_code = data.split(":")
+                if user_code == koodii_mirkaneessaa[addr]:
+                    client_socket.send("SUCCESS".encode('utf-8'))
+                    fayyadamtota[addr] = client_socket
+                else:
+                    client_socket.send("INVALID".encode('utf-8'))
+            elif addr in fayyadamtota:
+                for sock in fayyadamtota.values():
+                    if sock != client_socket:
+                        sock.send(data.encode('utf-8'))
+        except:
+            break
+    client_socket.close()
+
+print("[PHONE CHAT SERVER]: Server-ri active dha, hiriyoota eegaa jira...")
+while True:
+    client_socket, addr = server.accept()
+    threading.Thread(target=handle_friends, args=(client_socket, addr)).start()
